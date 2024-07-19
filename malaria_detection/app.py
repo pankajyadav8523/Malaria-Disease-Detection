@@ -5,7 +5,7 @@ import numpy as np
 import os
 
 # Load your trained model
-model = load_model('/home/pankaj/Desktop/Projects/malaria_detection/model/malaria_model.h5')
+model = load_model('/home/pankaj/Desktop/Projects/task1/malaria_detection/model/malaria_model.h5')
 
 # Function to make predictions
 def predict_malaria(img_path):
