@@ -14,6 +14,9 @@ logging.basicConfig(level=logging.DEBUG)
 try:
     model = load_model('model/malaria_model.h5')
     logging.info("Model loaded successfully.")
+    # Print model layers
+    for layer in model.layers:
+        print(layer.name)
 except Exception as e:
     logging.error(f"Error loading model: {e}")
     st.error("Error loading model. Please check the model path and file.")
@@ -120,7 +123,8 @@ if uploaded_file is not None:
             else:
                 st.write("The image is predicted to be Negative for Malaria with a confidence of {:.2f}%".format((1 - prediction) * 100))
 
-            last_conv_layer_name = "conv2d_2"  # Change this to the name of the last convolutional layer in your model
+            # Use the correct last convolutional layer name here
+            last_conv_layer_name = "conv2d_2"  # Update based on your model
             heatmap = make_gradcam_heatmap(img_array, model, last_conv_layer_name)
             if heatmap is not None:
                 cam_path = save_and_display_gradcam(img_path, heatmap)
