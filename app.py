@@ -5,21 +5,34 @@ import numpy as np
 import os
 import matplotlib.pyplot as plt
 import tensorflow as tf
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.DEBUG)
 
 # Load your trained model
-model = load_model('model/malaria_model.h5')
+try:
+    model = load_model('model/malaria_model.h5')
+    logging.info("Model loaded successfully.")
+except Exception as e:
+    logging.error(f"Error loading model: {e}")
+    st.error("Error loading model. Please check the model path and file.")
 
 # Function to make predictions
 def predict_malaria(img_path):
     try:
+        logging.info(f"Loading image from path: {img_path}")
         img = image.load_img(img_path, target_size=(128, 128))
         img_array = image.img_to_array(img)
         img_array = np.expand_dims(img_array, axis=0)
         img_array /= 255.0
+        logging.info("Image loaded and preprocessed successfully.")
 
         prediction = model.predict(img_array)
+        logging.info(f"Prediction made successfully: {prediction}")
         return prediction[0][0], img_array
     except Exception as e:
+        logging.error(f"Error during prediction: {e}")
         st.error(f"Error during prediction: {e}")
         return None, None
 
@@ -45,6 +58,7 @@ def make_gradcam_heatmap(img_array, model, last_conv_layer_name, pred_index=None
         heatmap = heatmap.numpy()
         return heatmap
     except Exception as e:
+        logging.error(f"Error generating Grad-CAM heatmap: {e}")
         st.error(f"Error generating Grad-CAM heatmap: {e}")
         return None
 
@@ -68,6 +82,7 @@ def save_and_display_gradcam(img_path, heatmap, cam_path="cam.jpg", alpha=0.4):
         superimposed_img.save(cam_path)
         return cam_path
     except Exception as e:
+        logging.error(f"Error saving Grad-CAM heatmap: {e}")
         st.error(f"Error saving Grad-CAM heatmap: {e}")
         return None
 
