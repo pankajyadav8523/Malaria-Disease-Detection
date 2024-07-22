@@ -42,7 +42,7 @@ def display_confidence_score(prediction):
     label = "Positive" if prediction > 0.5 else "Negative"
     
     fig, ax = plt.subplots()
-    ax.barh([0], [confidence], color='green' if prediction > 0.5 else 'red')
+    ax.barh([0], [confidence], color='red' if prediction > 0.5 else 'green')
     ax.set_xlim(0, 100)
     ax.set_yticks([])
     ax.set_xlabel('Confidence %')
@@ -58,33 +58,12 @@ def generate_report(prediction, img_path):
     st.markdown("## Detailed Report")
     st.markdown(f"**Prediction:** {label}")
     st.markdown(f"**Confidence:** {confidence:.2f}%")
-    st.markdown("**Uploaded Image:**")
-    st.image(img_path, caption='Uploaded Image', use_column_width=True)
     st.markdown("**General Information about Malaria Detection:**")
     st.markdown("""
     - Malaria is a life-threatening disease caused by parasites.
     - It is transmitted to people through the bites of infected female Anopheles mosquitoes.
     - Early diagnosis and treatment of malaria reduces disease and prevents deaths.
     """)
-
-# Function to enhance image
-def enhance_image(img_path):
-    img = Image.open(img_path)
-    enhancement_options = ["Original", "Contrast", "Brightness", "Sharpness"]
-    enhancement_type = st.selectbox("Choose an enhancement:", enhancement_options)
-    
-    if enhancement_type != "Original":
-        factor = st.slider(f"Adjust {enhancement_type}:", 0.1, 2.0, 1.0)
-        if enhancement_type == "Contrast":
-            enhancer = ImageEnhance.Contrast(img)
-        elif enhancement_type == "Brightness":
-            enhancer = ImageEnhance.Brightness(img)
-        elif enhancement_type == "Sharpness":
-            enhancer = ImageEnhance.Sharpness(img)
-        img = enhancer.enhance(factor)
-        
-    st.image(img, caption='Enhanced Image', use_column_width=True)
-    return img
 
 # Streamlit app
 st.title('Malaria Disease Detection')
@@ -100,8 +79,6 @@ if uploaded_file is not None:
     if uploaded_file.size > 5 * 1024 * 1024:  # 5MB limit
         st.error("File size should be less than 5MB.")
     else:
-        st.image(uploaded_file, caption='Uploaded Image.', use_column_width=True)
-        st.write("")
         st.write("Classifying...")
 
         img_folder = 'images/uploaded_images/'
