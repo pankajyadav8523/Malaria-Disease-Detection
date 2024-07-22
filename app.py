@@ -4,8 +4,8 @@ from tensorflow.keras.preprocessing import image
 import numpy as np
 import os
 import matplotlib.pyplot as plt
-import tensorflow as tf
 import logging
+from PIL import Image, ImageEnhance
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -14,9 +14,6 @@ logging.basicConfig(level=logging.DEBUG)
 try:
     model = load_model('model/malaria_model.h5')
     logging.info("Model loaded successfully.")
-    # Print model layers
-    for layer in model.layers:
-        print(layer.name)
 except Exception as e:
     logging.error(f"Error loading model: {e}")
     st.error("Error loading model. Please check the model path and file.")
@@ -39,55 +36,55 @@ def predict_malaria(img_path):
         st.error(f"Error during prediction: {e}")
         return None, None
 
-# Function to generate Grad-CAM heatmap
-def make_gradcam_heatmap(img_array, model, last_conv_layer_name, pred_index=None):
-    try:
-        grad_model = tf.keras.models.Model(
-            [model.inputs], [model.get_layer(last_conv_layer_name).output, model.output]
-        )
+# Function to display confidence score
+def display_confidence_score(prediction):
+    confidence = prediction * 100 if prediction > 0.5 else (1 - prediction) * 100
+    label = "Positive" if prediction > 0.5 else "Negative"
+    
+    fig, ax = plt.subplots()
+    ax.barh([0], [confidence], color='green' if prediction > 0.5 else 'red')
+    ax.set_xlim(0, 100)
+    ax.set_yticks([])
+    ax.set_xlabel('Confidence %')
+    ax.set_title(f'Prediction: {label}')
+    
+    st.pyplot(fig)
 
-        with tf.GradientTape() as tape:
-            last_conv_layer_output, preds = grad_model(img_array)
-            if pred_index is None:
-                pred_index = tf.argmax(preds[0])
-            class_channel = preds[:, pred_index]
+# Function to generate report
+def generate_report(prediction, img_path):
+    confidence = prediction * 100 if prediction > 0.5 else (1 - prediction) * 100
+    label = "Positive" if prediction > 0.5 else "Negative"
+    
+    st.markdown("## Detailed Report")
+    st.markdown(f"**Prediction:** {label}")
+    st.markdown(f"**Confidence:** {confidence:.2f}%")
+    st.markdown("**Uploaded Image:**")
+    st.image(img_path, caption='Uploaded Image', use_column_width=True)
+    st.markdown("**General Information about Malaria Detection:**")
+    st.markdown("""
+    - Malaria is a life-threatening disease caused by parasites.
+    - It is transmitted to people through the bites of infected female Anopheles mosquitoes.
+    - Early diagnosis and treatment of malaria reduces disease and prevents deaths.
+    """)
 
-        grads = tape.gradient(class_channel, last_conv_layer_output)
-        pooled_grads = tf.reduce_mean(grads, axis=(0, 1, 2))
-        last_conv_layer_output = last_conv_layer_output[0]
-        heatmap = last_conv_layer_output @ pooled_grads[..., tf.newaxis]
-        heatmap = tf.squeeze(heatmap)
-        heatmap = tf.maximum(heatmap, 0) / tf.math.reduce_max(heatmap)
-        heatmap = heatmap.numpy()
-        return heatmap
-    except Exception as e:
-        logging.error(f"Error generating Grad-CAM heatmap: {e}")
-        st.error(f"Error generating Grad-CAM heatmap: {e}")
-        return None
-
-# Function to save and display the heatmap
-def save_and_display_gradcam(img_path, heatmap, cam_path="cam.jpg", alpha=0.4):
-    try:
-        img = image.load_img(img_path)
-        img = image.img_to_array(img)
-
-        heatmap = np.uint8(255 * heatmap)
-        jet = plt.get_cmap("jet")
-        jet_colors = jet(np.arange(256))[:, :3]
-        jet_heatmap = jet_colors[heatmap]
-
-        jet_heatmap = image.array_to_img(jet_heatmap)
-        jet_heatmap = jet_heatmap.resize((img.shape[1], img.shape[0]))
-        jet_heatmap = image.img_to_array(jet_heatmap)
-
-        superimposed_img = jet_heatmap * alpha + img
-        superimposed_img = image.array_to_img(superimposed_img)
-        superimposed_img.save(cam_path)
-        return cam_path
-    except Exception as e:
-        logging.error(f"Error saving Grad-CAM heatmap: {e}")
-        st.error(f"Error saving Grad-CAM heatmap: {e}")
-        return None
+# Function to enhance image
+def enhance_image(img_path):
+    img = Image.open(img_path)
+    enhancement_options = ["Original", "Contrast", "Brightness", "Sharpness"]
+    enhancement_type = st.selectbox("Choose an enhancement:", enhancement_options)
+    
+    if enhancement_type != "Original":
+        factor = st.slider(f"Adjust {enhancement_type}:", 0.1, 2.0, 1.0)
+        if enhancement_type == "Contrast":
+            enhancer = ImageEnhance.Contrast(img)
+        elif enhancement_type == "Brightness":
+            enhancer = ImageEnhance.Brightness(img)
+        elif enhancement_type == "Sharpness":
+            enhancer = ImageEnhance.Sharpness(img)
+        img = enhancer.enhance(factor)
+        
+    st.image(img, caption='Enhanced Image', use_column_width=True)
+    return img
 
 # Streamlit app
 st.title('Malaria Disease Detection')
@@ -110,23 +107,34 @@ if uploaded_file is not None:
         img_folder = 'images/uploaded_images/'
         if not os.path.exists(img_folder):
             os.makedirs(img_folder)
-
+        
         img_path = os.path.join(img_folder, 'sample_image.png')
         with open(img_path, 'wb') as f:
             f.write(uploaded_file.getbuffer())
-
+        
         prediction, img_array = predict_malaria(img_path)
 
         if prediction is not None:
-            if prediction > 0.5:
-                st.write("The image is predicted to be Positive for Malaria with a confidence of {:.2f}%".format(prediction * 100))
-            else:
-                st.write("The image is predicted to be Negative for Malaria with a confidence of {:.2f}%".format((1 - prediction) * 100))
+            display_confidence_score(prediction)
+            generate_report(prediction, img_path)
+            feedback = st.radio("Is this prediction correct?", ("Yes", "No"))
+            if st.button("Submit Feedback"):
+                st.write("Thank you for your feedback!")
+                # Save feedback to a database or a file
 
-            # Use the correct last convolutional layer name here
-            last_conv_layer_name = "conv2d_2"  # Update based on your model
-            heatmap = make_gradcam_heatmap(img_array, model, last_conv_layer_name)
-            if heatmap is not None:
-                cam_path = save_and_display_gradcam(img_path, heatmap)
-                if cam_path is not None:
-                    st.image(cam_path, caption='Grad-CAM Heatmap.', use_column_width=True)
+st.markdown("## About Malaria")
+st.markdown("""
+Malaria is a serious and sometimes fatal disease caused by a parasite that commonly infects a certain type of mosquito which feeds on humans. 
+People who get malaria are typically very sick with high fevers, shaking chills, and flu-like illness.
+**Symptoms of Malaria:**
+- Fever
+- Chills
+- Headache
+- Nausea and vomiting
+- Muscle pain and fatigue
+**Prevention Methods:**
+- Use insect repellent
+- Sleep under a mosquito net
+- Take antimalarial drugs if traveling to a high-risk area
+- Wear long sleeves and pants to prevent mosquito bites
+""")
