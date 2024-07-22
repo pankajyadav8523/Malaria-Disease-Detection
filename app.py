@@ -6,7 +6,6 @@ import os
 import matplotlib.pyplot as plt
 import logging
 from PIL import Image, ImageEnhance
-import sqlite3
 from sqlalchemy import create_engine, Column, Integer, String, Boolean, Float
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
