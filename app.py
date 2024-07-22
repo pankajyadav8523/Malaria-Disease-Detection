@@ -6,9 +6,28 @@ import os
 import matplotlib.pyplot as plt
 import logging
 from PIL import Image, ImageEnhance
+import sqlite3
+from sqlalchemy import create_engine, Column, Integer, String, Boolean, Float
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
+
+# Set up SQLAlchemy
+Base = declarative_base()
+
+class Feedback(Base):
+    __tablename__ = 'feedback'
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    image_path = Column(String)
+    feedback = Column(Boolean)
+    prediction = Column(Float)
+
+engine = create_engine('sqlite:///feedback.db')
+Base.metadata.create_all(engine)
+Session = sessionmaker(bind=engine)
+session = Session()
 
 # Load your trained model
 try:
@@ -85,7 +104,7 @@ if uploaded_file is not None:
         if not os.path.exists(img_folder):
             os.makedirs(img_folder)
         
-        img_path = os.path.join(img_folder, 'sample_image.png')
+        img_path = os.path.join(img_folder, uploaded_file.name)
         with open(img_path, 'wb') as f:
             f.write(uploaded_file.getbuffer())
         
@@ -96,8 +115,12 @@ if uploaded_file is not None:
             generate_report(prediction, img_path)
             feedback = st.radio("Is this prediction correct?", ("Yes", "No"))
             if st.button("Submit Feedback"):
+                feedback_bool = True if feedback == "Yes" else False
+                feedback_entry = Feedback(image_path=img_path, feedback=feedback_bool, prediction=float(prediction))
+                session.add(feedback_entry)
+                session.commit()
                 st.write("Thank you for your feedback!")
-                # Save feedback to a database or a file
+                st.write("Feedback stored successfully!")
 
 st.markdown("## About Malaria")
 st.markdown("""
