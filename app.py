@@ -95,7 +95,7 @@ if app_mode == 'Home':
     Use the navigation bar to access different sections of the app.
     """)
 
-    home_image_path = 'assets/home_image.jpeg'
+    home_image_path = 'assets/home_page.jpeg'
     if os.path.exists(home_image_path):
         st.image(home_image_path, use_column_width=True)
     else:
@@ -157,7 +157,7 @@ elif app_mode == 'About Malaria':
     - Wear long sleeves and pants to prevent mosquito bites
     """)
 
-    malaria_prevention_image_path = 'malaria_prevention.jpg'
+    malaria_prevention_image_path = 'assets/malaria_prevention.jpg'
     if os.path.exists(malaria_prevention_image_path):
         st.image(malaria_prevention_image_path, use_column_width=True)
     else:
