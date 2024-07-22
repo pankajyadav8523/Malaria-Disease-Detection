@@ -94,7 +94,12 @@ if app_mode == 'Home':
     You can upload an image and get a prediction of whether the blood smear is infected with malaria or not.
     Use the navigation bar to access different sections of the app.
     """)
-    st.image('home_image.jpg', use_column_width=True)
+
+    home_image_path = 'assets/home_image.jpeg'
+    if os.path.exists(home_image_path):
+        st.image(home_image_path, use_column_width=True)
+    else:
+        st.warning("Home image not found. Please ensure 'home_image.jpg' is in the working directory.")
 
 elif app_mode == 'Detect Malaria':
     st.title('Malaria Disease Detection')
@@ -151,7 +156,12 @@ elif app_mode == 'About Malaria':
     - Take antimalarial drugs if traveling to a high-risk area
     - Wear long sleeves and pants to prevent mosquito bites
     """)
-    st.image('malaria_prevention.jpg', use_column_width=True)
+
+    malaria_prevention_image_path = 'malaria_prevention.jpg'
+    if os.path.exists(malaria_prevention_image_path):
+        st.image(malaria_prevention_image_path, use_column_width=True)
+    else:
+        st.warning("Malaria prevention image not found. Please ensure 'malaria_prevention.jpg' is in the working directory.")
 
 st.sidebar.title('Contact Us')
 st.sidebar.info('For any inquiries or support, please contact us at: support@malariadetection.com')
