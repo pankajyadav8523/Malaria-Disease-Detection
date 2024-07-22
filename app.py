@@ -85,56 +85,74 @@ def generate_report(prediction, img_path):
     """)
 
 # Streamlit app
-st.title('Malaria Disease Detection')
+st.sidebar.title('Navigation')
+app_mode = st.sidebar.selectbox('Choose the app mode', ['Home', 'Detect Malaria', 'About Malaria'])
 
-st.write('Upload an image of a blood smear to check for malaria.')
+if app_mode == 'Home':
+    st.title('Welcome to the Malaria Disease Detection App')
+    st.markdown("""
+    This application uses a deep learning model to detect malaria from blood smear images. 
+    You can upload an image and get a prediction of whether the blood smear is infected with malaria or not.
+    Use the navigation bar to access different sections of the app.
+    """)
+    st.image('home_image.jpg', use_column_width=True)
 
-uploaded_file = st.file_uploader("Choose an image...", type="png")
+elif app_mode == 'Detect Malaria':
+    st.title('Malaria Disease Detection')
+    st.write('Upload an image of a blood smear to check for malaria.')
 
-if uploaded_file is not None:
-    file_details = {"filename": uploaded_file.name, "filetype": uploaded_file.type, "filesize": uploaded_file.size}
-    st.write(file_details)
+    uploaded_file = st.file_uploader("Choose an image...", type="png")
 
-    if uploaded_file.size > 5 * 1024 * 1024:  # 5MB limit
-        st.error("File size should be less than 5MB.")
-    else:
-        st.write("Classifying...")
+    if uploaded_file is not None:
+        file_details = {"filename": uploaded_file.name, "filetype": uploaded_file.type, "filesize": uploaded_file.size}
+        st.write(file_details)
 
-        img_folder = 'images/uploaded_images/'
-        if not os.path.exists(img_folder):
-            os.makedirs(img_folder)
-        
-        img_path = os.path.join(img_folder, uploaded_file.name)
-        with open(img_path, 'wb') as f:
-            f.write(uploaded_file.getbuffer())
-        
-        prediction, img_array = predict_malaria(img_path)
+        if uploaded_file.size > 5 * 1024 * 1024:  # 5MB limit
+            st.error("File size should be less than 5MB.")
+        else:
+            st.write("Classifying...")
 
-        if prediction is not None:
-            display_confidence_score(prediction)
-            generate_report(prediction, img_path)
-            feedback = st.radio("Is this prediction correct?", ("Yes", "No"))
-            if st.button("Submit Feedback"):
-                feedback_bool = True if feedback == "Yes" else False
-                feedback_entry = Feedback(image_path=img_path, feedback=feedback_bool, prediction=float(prediction))
-                session.add(feedback_entry)
-                session.commit()
-                st.write("Thank you for your feedback!")
-                st.write("Feedback stored successfully!")
+            img_folder = 'images/uploaded_images/'
+            if not os.path.exists(img_folder):
+                os.makedirs(img_folder)
+            
+            img_path = os.path.join(img_folder, uploaded_file.name)
+            with open(img_path, 'wb') as f:
+                f.write(uploaded_file.getbuffer())
+            
+            prediction, img_array = predict_malaria(img_path)
 
-st.markdown("## About Malaria")
-st.markdown("""
-Malaria is a serious and sometimes fatal disease caused by a parasite that commonly infects a certain type of mosquito which feeds on humans. 
-People who get malaria are typically very sick with high fevers, shaking chills, and flu-like illness.
-**Symptoms of Malaria:**
-- Fever
-- Chills
-- Headache
-- Nausea and vomiting
-- Muscle pain and fatigue
-**Prevention Methods:**
-- Use insect repellent
-- Sleep under a mosquito net
-- Take antimalarial drugs if traveling to a high-risk area
-- Wear long sleeves and pants to prevent mosquito bites
-""")
+            if prediction is not None:
+                st.image(image.array_to_img(img_array[0]), caption='Uploaded Image', use_column_width=True)
+                display_confidence_score(prediction)
+                generate_report(prediction, img_path)
+                feedback = st.radio("Is this prediction correct?", ("Yes", "No"))
+                if st.button("Submit Feedback"):
+                    feedback_bool = True if feedback == "Yes" else False
+                    feedback_entry = Feedback(image_path=img_path, feedback=feedback_bool, prediction=float(prediction))
+                    session.add(feedback_entry)
+                    session.commit()
+                    st.write("Thank you for your feedback!")
+                    st.write("Feedback stored successfully!")
+
+elif app_mode == 'About Malaria':
+    st.title("About Malaria")
+    st.markdown("""
+    Malaria is a serious and sometimes fatal disease caused by a parasite that commonly infects a certain type of mosquito which feeds on humans. 
+    People who get malaria are typically very sick with high fevers, shaking chills, and flu-like illness.
+    **Symptoms of Malaria:**
+    - Fever
+    - Chills
+    - Headache
+    - Nausea and vomiting
+    - Muscle pain and fatigue
+    **Prevention Methods:**
+    - Use insect repellent
+    - Sleep under a mosquito net
+    - Take antimalarial drugs if traveling to a high-risk area
+    - Wear long sleeves and pants to prevent mosquito bites
+    """)
+    st.image('malaria_prevention.jpg', use_column_width=True)
+
+st.sidebar.title('Contact Us')
+st.sidebar.info('For any inquiries or support, please contact us at: support@malariadetection.com')
