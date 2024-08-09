@@ -73,6 +73,9 @@ def display_gradcam(img_path, heatmap, cam_path="cam.jpg", alpha=0.4):
     img = tf.image.decode_image(img)
     img = tf.image.resize(img, (heatmap.shape[0], heatmap.shape[1]))
 
+    # Expand dimensions of heatmap to add a channels dimension
+    heatmap = tf.expand_dims(heatmap, axis=-1)
+
     heatmap = np.uint8(255 * heatmap)
     heatmap = tf.image.resize_with_crop_or_pad(heatmap, img.shape[0], img.shape[1])
     heatmap = tf.image.grayscale_to_rgb(heatmap)
