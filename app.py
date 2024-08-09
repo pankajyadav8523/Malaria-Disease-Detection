@@ -69,26 +69,39 @@ def make_gradcam_heatmap(img_array, model, last_conv_layer_name, pred_index=None
     return heatmap.numpy()
 
 def display_gradcam(img_path, heatmap, cam_path="cam.jpg", alpha=0.4):
+    # Load the image
     img = tf.io.read_file(img_path)
     img = tf.image.decode_image(img)
     img = tf.image.resize(img, (heatmap.shape[0], heatmap.shape[1]))
 
-    # Expand dimensions of heatmap to add a channels dimension
+    # Expand heatmap dimensions to (height, width, 1)
     heatmap = tf.expand_dims(heatmap, axis=-1)
 
+    # Normalize the heatmap between 0 and 1
     heatmap = np.uint8(255 * heatmap)
     heatmap = tf.image.resize_with_crop_or_pad(heatmap, img.shape[0], img.shape[1])
+
+    # Convert heatmap to RGB
     heatmap = tf.image.grayscale_to_rgb(heatmap)
-    
-    # Apply colormap using matplotlib
-    heatmap = tf.convert_to_tensor(plt.cm.jet(heatmap.numpy())[:, :, :3])
-    
-    superimposed_img = heatmap * alpha + img.numpy()
+
+    # Apply colormap using matplotlib and convert to Tensor
+    heatmap = tf.convert_to_tensor(plt.cm.jet(heatmap.numpy())[:, :, :3], dtype=tf.float32)
+
+    # Normalize the original image between 0 and 1
+    img = tf.image.convert_image_dtype(img, dtype=tf.float32)
+
+    # Ensure heatmap and image have compatible shapes and types
+    heatmap = tf.image.resize(heatmap, [img.shape[0], img.shape[1]])
+
+    # Superimpose the heatmap on the original image
+    superimposed_img = heatmap * alpha + img
+
+    # Convert back to uint8
     superimposed_img = tf.image.convert_image_dtype(superimposed_img, dtype=tf.uint8)
-    
+
+    # Save and display the image
     superimposed_img = Image.fromarray(superimposed_img.numpy())
     superimposed_img.save(cam_path)
-
     st.image(superimposed_img, caption='Grad-CAM Image', use_column_width=True)
 
 # Function to make predictions
