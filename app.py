@@ -4,7 +4,6 @@ from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing import image
 from tensorflow.keras.applications.resnet50 import ResNet50, preprocess_input
 from tensorflow.keras.models import Model
-import cv2
 import numpy as np
 import os
 import matplotlib.pyplot as plt
@@ -70,15 +69,24 @@ def make_gradcam_heatmap(img_array, model, last_conv_layer_name, pred_index=None
     return heatmap.numpy()
 
 def display_gradcam(img_path, heatmap, cam_path="cam.jpg", alpha=0.4):
-    img = cv2.imread(img_path)
-    heatmap = cv2.resize(heatmap, (img.shape[1], img.shape[0]))
-    heatmap = np.uint8(255 * heatmap)
-    heatmap = cv2.applyColorMap(heatmap, cv2.COLORMAP_JET)
-    superimposed_img = heatmap * alpha + img
-    cv2.imwrite(cam_path, superimposed_img)
+    img = tf.io.read_file(img_path)
+    img = tf.image.decode_image(img)
+    img = tf.image.resize(img, (heatmap.shape[0], heatmap.shape[1]))
 
-    img = cv2.imread(cam_path)
-    st.image(image.array_to_img(cv2.cvtColor(img, cv2.COLOR_BGR2RGB)), caption='Grad-CAM Image', use_column_width=True)
+    heatmap = np.uint8(255 * heatmap)
+    heatmap = tf.image.resize_with_crop_or_pad(heatmap, img.shape[0], img.shape[1])
+    heatmap = tf.image.grayscale_to_rgb(heatmap)
+    
+    # Apply colormap using matplotlib
+    heatmap = tf.convert_to_tensor(plt.cm.jet(heatmap.numpy())[:, :, :3])
+    
+    superimposed_img = heatmap * alpha + img.numpy()
+    superimposed_img = tf.image.convert_image_dtype(superimposed_img, dtype=tf.uint8)
+    
+    superimposed_img = Image.fromarray(superimposed_img.numpy())
+    superimposed_img.save(cam_path)
+
+    st.image(superimposed_img, caption='Grad-CAM Image', use_column_width=True)
 
 # Function to make predictions
 def predict_malaria(img_path):
@@ -212,18 +220,13 @@ elif app_mode == 'About Malaria':
     - Headache
     - Nausea and vomiting
     - Muscle pain and fatigue
-    **Prevention Methods:**
-    - Use insect repellent
-    - Sleep under a mosquito net
-    - Take antimalarial drugs if traveling to a high-risk area
-    - Wear long sleeves and pants to prevent mosquito bites
+    **Prevention and Treatment:**
+    - Avoid mosquito bites by using mosquito repellent, sleeping under a bed net, and wearing protective clothing.
+    - Antimalarial drugs are available to prevent and treat malaria.
+    - Early diagnosis and prompt treatment are essential for reducing malaria-related deaths.
     """)
-
-    malaria_prevention_image_path = 'assets/malaria_prevention.jpg'
-    if os.path.exists(malaria_prevention_image_path):
-        st.image(malaria_prevention_image_path, use_column_width=True)
+    malaria_image_path = 'assets/malaria_about.jpeg'
+    if os.path.exists(malaria_image_path):
+        st.image(malaria_image_path, use_column_width=True)
     else:
-        st.warning("Malaria prevention image not found. Please ensure 'malaria_prevention.jpg' is in the working directory.")
-
-st.sidebar.title('Contact Us')
-st.sidebar.info('For any inquiries or support, please contact us at: support@malariadetection.com')
+        st.warning("Malaria image not found. Please ensure 'malaria_about.jpeg' is in the working directory.")
