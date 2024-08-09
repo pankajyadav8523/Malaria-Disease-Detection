@@ -71,21 +71,22 @@ def make_gradcam_heatmap(img_array, model, last_conv_layer_name, pred_index=None
 def display_gradcam(img_path, heatmap, cam_path="cam.jpg", alpha=0.6):
     # Load the image
     img = tf.io.read_file(img_path)
-    img = tf.image.decode_image(img, channels=3)  # Ensure image has 3 channels (RGB)
-    img = tf.image.resize(img, (heatmap.shape[0], heatmap.shape[1]))  # Resize image to match heatmap size
-    img = tf.image.convert_image_dtype(img, dtype=tf.float32)  # Normalize the image to [0, 1] range
+    img = tf.image.decode_image(img, channels=3)
+    img = tf.image.resize(img, (heatmap.shape[0], heatmap.shape[1]))
+    img = tf.image.convert_image_dtype(img, dtype=tf.float32)
 
-    # Normalize the heatmap
-    heatmap = tf.maximum(heatmap, 0)  # Ensure no negative values in heatmap
+    # Check the heatmap values before normalization
+    print("Heatmap min value:", tf.reduce_min(heatmap).numpy())
+    print("Heatmap max value:", tf.reduce_max(heatmap).numpy())
+
+    # Apply normalization (if necessary)
+    heatmap = tf.maximum(heatmap, 0)
     heatmap = heatmap / tf.reduce_max(heatmap)  # Normalize heatmap to [0, 1] range
 
     # Apply a vivid colormap (e.g., 'jet' or 'turbo')
-    heatmap = plt.cm.turbo(heatmap)[:, :, :3]  # Use only RGB channels (drop alpha)
+    heatmap = plt.cm.turbo(heatmap)[:, :, :3]
 
-    # Convert the heatmap to a tensor
     heatmap = tf.convert_to_tensor(heatmap)
-
-    # Resize heatmap to match image size
     heatmap = tf.image.resize(heatmap, (img.shape[0], img.shape[1]))
 
     # Superimpose the heatmap on the original image
@@ -99,15 +100,15 @@ def display_gradcam(img_path, heatmap, cam_path="cam.jpg", alpha=0.6):
 
     # Enhance the brightness and contrast of the image
     enhancer = ImageEnhance.Brightness(superimposed_img)
-    superimposed_img = enhancer.enhance(1.7)  # Increase the brightness (1.0 is original, >1.0 is brighter)
+    superimposed_img = enhancer.enhance(1.7)
 
     contrast_enhancer = ImageEnhance.Contrast(superimposed_img)
-    superimposed_img = contrast_enhancer.enhance(1.5)  # Increase contrast to make colors pop
+    superimposed_img = contrast_enhancer.enhance(1.5)
 
     # Save and display the image
     superimposed_img.save(cam_path)
     st.image(superimposed_img, caption='Enhanced Grad-CAM Image', use_column_width=True)
-
+    
 # Function to make predictions
 def predict_malaria(img_path):
     try:
