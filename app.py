@@ -79,8 +79,11 @@ def display_gradcam(img_path, heatmap, cam_path="cam.jpg", alpha=0.4):
     heatmap = tf.maximum(heatmap, 0)  # Ensure no negative values in heatmap
     heatmap = heatmap / tf.reduce_max(heatmap)  # Normalize heatmap to [0, 1] range
 
-    # Convert heatmap to RGB
-    heatmap = tf.image.grayscale_to_rgb(tf.expand_dims(heatmap, axis=-1))
+    # Apply a colormap to the heatmap (e.g., 'viridis', 'plasma', etc.)
+    heatmap = plt.cm.plasma(heatmap)[:, :, :3]  # Use only RGB channels (drop alpha)
+
+    # Convert the heatmap to a tensor
+    heatmap = tf.convert_to_tensor(heatmap)
 
     # Resize heatmap to match image size
     heatmap = tf.image.resize(heatmap, (img.shape[0], img.shape[1]))
@@ -91,11 +94,16 @@ def display_gradcam(img_path, heatmap, cam_path="cam.jpg", alpha=0.4):
     # Convert the superimposed image to uint8
     superimposed_img = tf.image.convert_image_dtype(superimposed_img, dtype=tf.uint8)
 
-    # Save and display the image
+    # Convert the tensor to a PIL image
     superimposed_img = Image.fromarray(superimposed_img.numpy())
+
+    # Enhance the brightness of the image
+    enhancer = ImageEnhance.Brightness(superimposed_img)
+    superimposed_img = enhancer.enhance(1.5)  # Increase the brightness (1.0 is original, >1.0 is brighter)
+
+    # Save and display the image
     superimposed_img.save(cam_path)
     st.image(superimposed_img, caption='Grad-CAM Image', use_column_width=True)
-
 
 # Function to make predictions
 def predict_malaria(img_path):
