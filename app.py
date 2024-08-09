@@ -68,7 +68,7 @@ def make_gradcam_heatmap(img_array, model, last_conv_layer_name, pred_index=None
     heatmap = tf.maximum(heatmap, 0) / tf.math.reduce_max(heatmap)
     return heatmap.numpy()
 
-def display_gradcam(img_path, heatmap, cam_path="cam.jpg", alpha=0.4):
+def display_gradcam(img_path, heatmap, cam_path="cam.jpg", alpha=0.6):
     # Load the image
     img = tf.io.read_file(img_path)
     img = tf.image.decode_image(img, channels=3)  # Ensure image has 3 channels (RGB)
@@ -79,8 +79,8 @@ def display_gradcam(img_path, heatmap, cam_path="cam.jpg", alpha=0.4):
     heatmap = tf.maximum(heatmap, 0)  # Ensure no negative values in heatmap
     heatmap = heatmap / tf.reduce_max(heatmap)  # Normalize heatmap to [0, 1] range
 
-    # Apply a colormap to the heatmap (e.g., 'viridis', 'plasma', etc.)
-    heatmap = plt.cm.plasma(heatmap)[:, :, :3]  # Use only RGB channels (drop alpha)
+    # Apply a vivid colormap (e.g., 'jet' or 'turbo')
+    heatmap = plt.cm.turbo(heatmap)[:, :, :3]  # Use only RGB channels (drop alpha)
 
     # Convert the heatmap to a tensor
     heatmap = tf.convert_to_tensor(heatmap)
@@ -97,13 +97,16 @@ def display_gradcam(img_path, heatmap, cam_path="cam.jpg", alpha=0.4):
     # Convert the tensor to a PIL image
     superimposed_img = Image.fromarray(superimposed_img.numpy())
 
-    # Enhance the brightness of the image
+    # Enhance the brightness and contrast of the image
     enhancer = ImageEnhance.Brightness(superimposed_img)
-    superimposed_img = enhancer.enhance(1.5)  # Increase the brightness (1.0 is original, >1.0 is brighter)
+    superimposed_img = enhancer.enhance(1.7)  # Increase the brightness (1.0 is original, >1.0 is brighter)
+
+    contrast_enhancer = ImageEnhance.Contrast(superimposed_img)
+    superimposed_img = contrast_enhancer.enhance(1.5)  # Increase contrast to make colors pop
 
     # Save and display the image
     superimposed_img.save(cam_path)
-    st.image(superimposed_img, caption='Grad-CAM Image', use_column_width=True)
+    st.image(superimposed_img, caption='Enhanced Grad-CAM Image', use_column_width=True)
 
 # Function to make predictions
 def predict_malaria(img_path):
