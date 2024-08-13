@@ -5,3 +5,4 @@ keras==3.4.1
 streamlit==1.36.0
 matplotlib==3.6.3
 sqlalchemy==1.4.50
+opencv-python==4.10.0

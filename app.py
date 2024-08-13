@@ -6,14 +6,15 @@ from tensorflow.keras.applications.resnet50 import ResNet50, preprocess_input
 from tensorflow.keras.models import Model
 import numpy as np
 import os
+import cv2
 import matplotlib.pyplot as plt
-import logging
 from PIL import Image, ImageEnhance
 from sqlalchemy import create_engine, Column, Integer, String, Boolean, Float
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
 # Configure logging
+import logging
 logging.basicConfig(level=logging.DEBUG)
 
 # Set up SQLAlchemy
@@ -31,14 +32,14 @@ Base.metadata.create_all(engine)
 Session = sessionmaker(bind=engine)
 session = Session()
 
-# Load your trained model
+# Load your trained malaria model and the ResNet50 model
 try:
-    model = load_model('model/malaria_model.h5')
-    malaria_model = ResNet50(weights='imagenet')
-    logging.info("Model loaded successfully.")
+    malaria_model = load_model('model/malaria_model.h5')  # Your custom model
+    resnet_model = ResNet50(weights='imagenet')  # ResNet50 for Grad-CAM
+    logging.info("Models loaded successfully.")
 except Exception as e:
-    logging.error(f"Error loading model: {e}")
-    st.error("Error loading model. Please check the model path and file.")
+    logging.error(f"Error loading models: {e}")
+    st.error("Error loading models. Please check the model paths and files.")
 
 def get_img_array(img_path, size):
     img = image.load_img(img_path, target_size=size)
@@ -68,66 +69,34 @@ def make_gradcam_heatmap(img_array, model, last_conv_layer_name, pred_index=None
     heatmap = tf.maximum(heatmap, 0) / tf.math.reduce_max(heatmap)
     return heatmap.numpy()
 
-def display_gradcam(img_path, heatmap, cam_path="cam.jpg", alpha=0.6):
-    # Load the image
-    img = tf.io.read_file(img_path)
-    img = tf.image.decode_image(img, channels=3)
-    img = tf.image.resize(img, (heatmap.shape[0], heatmap.shape[1]))
-    img = tf.image.convert_image_dtype(img, dtype=tf.float32)
-
-    # Check the heatmap values before normalization
-    print("Heatmap min value:", tf.reduce_min(heatmap).numpy())
-    print("Heatmap max value:", tf.reduce_max(heatmap).numpy())
-
-    # Apply normalization (if necessary)
-    heatmap = tf.maximum(heatmap, 0)
-    heatmap = heatmap / tf.reduce_max(heatmap)  # Normalize heatmap to [0, 1] range
-
-    # Apply a vivid colormap (e.g., 'jet' or 'turbo')
-    heatmap = plt.cm.turbo(heatmap)[:, :, :3]
-
-    heatmap = tf.convert_to_tensor(heatmap)
-    heatmap = tf.image.resize(heatmap, (img.shape[0], img.shape[1]))
-
-    # Superimpose the heatmap on the original image
+def display_gradcam(img_path, heatmap, cam_path="cam.jpg", alpha=0.4):
+    img = cv2.imread(img_path)
+    heatmap = cv2.resize(heatmap, (img.shape[1], img.shape[0]))
+    heatmap = np.uint8(255 * heatmap)
+    heatmap = cv2.applyColorMap(heatmap, cv2.COLORMAP_JET)
     superimposed_img = heatmap * alpha + img
+    cv2.imwrite(cam_path, superimposed_img)
 
-    # Convert the superimposed image to uint8
-    superimposed_img = tf.image.convert_image_dtype(superimposed_img, dtype=tf.uint8)
+    img = Image.open(cam_path)
+    st.image(img, caption='Grad-CAM Image', use_column_width=True)
 
-    # Convert the tensor to a PIL image
-    superimposed_img = Image.fromarray(superimposed_img.numpy())
-
-    # Enhance the brightness and contrast of the image
-    enhancer = ImageEnhance.Brightness(superimposed_img)
-    superimposed_img = enhancer.enhance(1.7)
-
-    contrast_enhancer = ImageEnhance.Contrast(superimposed_img)
-    superimposed_img = contrast_enhancer.enhance(1.5)
-
-    # Save and display the image
-    superimposed_img.save(cam_path)
-    st.image(superimposed_img, caption='Enhanced Grad-CAM Image', use_column_width=True)
-    
-# Function to make predictions
 def predict_malaria(img_path):
     try:
         logging.info(f"Loading image from path: {img_path}")
-        img = image.load_img(img_path, target_size=(128, 128))
+        img = image.load_img(img_path, target_size=(128, 128))  # Resize to 128x128 for malaria detection
         img_array = image.img_to_array(img)
         img_array = np.expand_dims(img_array, axis=0)
         img_array /= 255.0
         logging.info("Image loaded and preprocessed successfully.")
 
-        prediction = model.predict(img_array)
+        prediction = malaria_model.predict(img_array)
         logging.info(f"Prediction made successfully: {prediction}")
         return prediction[0][0], img_array
     except Exception as e:
         logging.error(f"Error during prediction: {e}")
         st.error(f"Error during prediction: {e}")
         return None, None
-
-# Function to display confidence score
+    
 def display_confidence_score(prediction):
     confidence = prediction * 100 if prediction > 0.5 else (1 - prediction) * 100
     label = "Positive" if prediction > 0.5 else "Negative"
@@ -141,14 +110,13 @@ def display_confidence_score(prediction):
     
     st.pyplot(fig)
 
-# Function to generate report
 def generate_report(prediction, img_path, heatmap):
     confidence = prediction * 100 if prediction > 0.5 else (1 - prediction) * 100
     label = "Positive" if prediction > 0.5 else "Negative"
     st.markdown("## Detailed Report")
     st.markdown(f"**Prediction:** {label}")
     st.markdown(f"**Confidence:** {confidence:.2f}%")
-    st.markdown("### Grad Cam Image")
+    st.markdown("### Grad-CAM Image")
     display_gradcam(img_path, heatmap)
     st.markdown("**General Information about Malaria Detection:**")
     st.markdown("""
@@ -185,7 +153,7 @@ if app_mode == 'Home':
     if os.path.exists(home_image_path):
         st.image(home_image_path, use_column_width=True)
     else:
-        st.warning("Home image not found. Please ensure 'home_image.jpg' is in the working directory.")
+        st.warning("Home image not found. Please ensure 'home_image.jpeg' is in the working directory.")
 
 elif app_mode == 'Detect Malaria':
     st.title('Malaria Disease Detection')
@@ -218,7 +186,7 @@ elif app_mode == 'Detect Malaria':
             if prediction is not None:
                 st.image(image.array_to_img(img_array[0]), caption='Uploaded Image', use_column_width=True)
                 display_confidence_score(prediction)
-                heatmap = make_gradcam_heatmap(img_Array, malaria_model, last_conv_layer_name)
+                heatmap = make_gradcam_heatmap(img_Array, resnet_model, last_conv_layer_name)
                 generate_report(prediction, img_path, heatmap)
 
                 feedback = st.radio("Is this prediction correct?", ("Yes", "No"))
@@ -246,8 +214,3 @@ elif app_mode == 'About Malaria':
     - Antimalarial drugs are available to prevent and treat malaria.
     - Early diagnosis and prompt treatment are essential for reducing malaria-related deaths.
     """)
-    malaria_image_path = 'assets/malaria_about.jpeg'
-    if os.path.exists(malaria_image_path):
-        st.image(malaria_image_path, use_column_width=True)
-    else:
-        st.warning("Malaria image not found. Please ensure 'malaria_about.jpeg' is in the working directory.")
