@@ -159,7 +159,8 @@ elif app_mode == 'Detect Malaria':
     st.title('Malaria Disease Detection')
     st.write('Upload an image of a blood smear to check for malaria.')
 
-    uploaded_file = st.file_uploader("Choose an image...", type="png")
+    uploaded_file = st.file_uploader("Choose an image...", type=["png", "jpg", "jpeg"])
+
 
     if uploaded_file is not None:
         file_details = {"filename": uploaded_file.name, "filetype": uploaded_file.type, "filesize": uploaded_file.size}
@@ -168,8 +169,6 @@ elif app_mode == 'Detect Malaria':
         if uploaded_file.size > 5 * 1024 * 1024:  # 5MB limit
             st.error("File size should be less than 5MB.")
         else:
-            st.write("Classifying...")
-
             img_folder = 'images/uploaded_images/'
             if not os.path.exists(img_folder):
                 os.makedirs(img_folder)
@@ -184,6 +183,7 @@ elif app_mode == 'Detect Malaria':
             prediction, img_array = predict_malaria(img_path)
 
             if prediction is not None:
+                st.write("Classifying...")
                 st.image(image.array_to_img(img_array[0]), caption='Uploaded Image', use_column_width=True)
                 display_confidence_score(prediction)
                 heatmap = make_gradcam_heatmap(img_Array, resnet_model, last_conv_layer_name)
