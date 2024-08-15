@@ -8,16 +8,28 @@ import numpy as np
 import os
 import cv2
 import matplotlib.pyplot as plt
-from PIL import Image, ImageEnhance
+from PIL import Image
 from sqlalchemy import create_engine, Column, Integer, String, Boolean, Float
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+import altair as alt
+import logging
 
 # Configure logging
-import logging
 logging.basicConfig(level=logging.DEBUG)
 
-# Set up SQLAlchemy
+# Streamlit app configuration
+st.set_page_config(
+    page_title="Malaria Disease Detection",
+    page_icon="🏂",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# Enable Altair dark theme
+alt.themes.enable("dark")
+
+# Set up SQLAlchemy for feedback
 Base = declarative_base()
 
 class Feedback(Base):
@@ -32,10 +44,27 @@ Base.metadata.create_all(engine)
 Session = sessionmaker(bind=engine)
 session = Session()
 
-# Load your trained malaria model and the ResNet50 model
+# Adding Custom CSS for better styling
+st.markdown("""
+    <style>
+    .stButton>button {
+        background-color: #4CAF50;
+        color: white;
+        border-radius: 12px;
+    }
+    .stRadio>div {
+        background-color: #f9f9f9;
+        padding: 10px;
+        border-radius: 5px;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+
+# Load models
 try:
-    malaria_model = load_model('model/malaria_model.h5')  # Your custom model
-    resnet_model = ResNet50(weights='imagenet')  # ResNet50 for Grad-CAM
+    malaria_model = load_model('model/malaria_model.h5')  # Custom malaria detection model
+    resnet_model = ResNet50(weights='imagenet')  # ResNet50 model for Grad-CAM
     logging.info("Models loaded successfully.")
 except Exception as e:
     logging.error(f"Error loading models: {e}")
@@ -130,7 +159,7 @@ if 'app_mode' not in st.session_state:
     st.session_state.app_mode = 'Home'
 
 # Sidebar navigation with arrow buttons
-st.sidebar.title('Navigation')
+st.sidebar.title('Malaria Disease Detection App')
 if st.sidebar.button('→ Home'):
     st.session_state.app_mode = 'Home'
 if st.sidebar.button('→ Detect Malaria'):
@@ -159,17 +188,18 @@ elif app_mode == 'Detect Malaria':
     st.title('Malaria Disease Detection')
     st.write('Upload an image of a blood smear to check for malaria.')
 
-    uploaded_file = st.file_uploader("Choose an image...", type=["png", "jpg", "jpeg"])
+    col1, col2 = st.columns(2)
 
-
-    if uploaded_file is not None:
-        file_details = {"filename": uploaded_file.name, "filetype": uploaded_file.type, "filesize": uploaded_file.size}
-        st.write(file_details)
-
-        if uploaded_file.size > 5 * 1024 * 1024:  # 5MB limit
-            st.error("File size should be less than 5MB.")
-        else:
+    with col1:
+        uploaded_file = st.file_uploader("Choose an image...", type=["png", "jpg", "jpeg"])
+        
+    with col2:
+        if uploaded_file is not None:
+            file_details = {"filename": uploaded_file.name, "filetype": uploaded_file.type, "filesize": uploaded_file.size}
+            st.write(file_details)
             img_folder = 'images/uploaded_images/'
+            st.markdown("---")
+            st.write("Processing the image...")
             if not os.path.exists(img_folder):
                 os.makedirs(img_folder)
             
@@ -177,26 +207,29 @@ elif app_mode == 'Detect Malaria':
             with open(img_path, 'wb') as f:
                 f.write(uploaded_file.getbuffer())
             
-            img_Array = get_img_array(img_path, size=(224, 224))
+            img_array_resnet = get_img_array(img_path, size=(224, 224))
             last_conv_layer_name = "conv5_block3_out"
 
-            prediction, img_array = predict_malaria(img_path)
+            with st.spinner('Classifying the image, please wait...'):
+                prediction, img_array = predict_malaria(img_path)
 
-            if prediction is not None:
-                st.write("Classifying...")
-                st.image(image.array_to_img(img_array[0]), caption='Uploaded Image', use_column_width=True)
-                display_confidence_score(prediction)
-                heatmap = make_gradcam_heatmap(img_Array, resnet_model, last_conv_layer_name)
-                generate_report(prediction, img_path, heatmap)
+                if prediction is not None:
+                    st.image(image.array_to_img(img_array[0]), caption='Uploaded Image', use_column_width=True)
+                    display_confidence_score(prediction)
+                    heatmap = make_gradcam_heatmap(img_array_resnet, resnet_model, last_conv_layer_name)
+                    generate_report(prediction, img_path, heatmap)
 
-                feedback = st.radio("Is this prediction correct?", ("Yes", "No"))
-                if st.button("Submit Feedback"):
-                    feedback_bool = True if feedback == "Yes" else False
-                    feedback_entry = Feedback(image_path=img_path, feedback=feedback_bool, prediction=float(prediction))
-                    session.add(feedback_entry)
-                    session.commit()
-                    st.write("Thank you for your feedback!")
-                    st.write("Feedback stored successfully!")
+                    feedback = st.radio("Is this prediction correct?", ("Yes", "No"))
+                    if st.button("Submit Feedback"):
+                        feedback_bool = True if feedback == "Yes" else False
+                        feedback_entry = Feedback(image_path=img_path, feedback=feedback_bool, prediction=float(prediction))
+                        session.add(feedback_entry)
+                        session.commit()
+
+                        # Display success message with an icon
+                        st.success("Thank you for your feedback! 🎉")
+                        st.balloons()  # Fun visual effect
+
 
 elif app_mode == 'About Malaria':
     st.title("About Malaria")
@@ -211,6 +244,6 @@ elif app_mode == 'About Malaria':
     - Muscle pain and fatigue
     **Prevention and Treatment:**
     - Avoid mosquito bites by using mosquito repellent, sleeping under a bed net, and wearing protective clothing.
-    - Antimalarial drugs are available to prevent and treat malaria.
-    - Early diagnosis and prompt treatment are essential for reducing malaria-related deaths.
+    - Antimalarial drugs can prevent infection.
+    - Malaria can be cured with prescription drugs if treated early.
     """)
