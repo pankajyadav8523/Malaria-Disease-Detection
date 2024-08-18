@@ -15,16 +15,32 @@ from sqlalchemy.orm import sessionmaker
 import altair as alt
 import logging
 
-# Configure logging
-logging.basicConfig(level=logging.DEBUG)
-
-# Streamlit app configuration
+# Set Streamlit app configuration
 st.set_page_config(
     page_title="Malaria Disease Detection",
     page_icon="🏂",
     layout="wide",
     initial_sidebar_state="expanded"
 )
+
+# Configure logging
+logging.basicConfig(level=logging.DEBUG)
+
+# Set the background image
+background_image = """
+<style>
+body {
+    background-image: url("Malaria_Disease.jpg");
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+    background-position: center;
+}
+</style>
+"""
+
+# Embed the CSS in the Streamlit app
+st.markdown(background_image, unsafe_allow_html=True)
 
 # Enable Altair dark theme
 alt.themes.enable("dark")
@@ -59,7 +75,6 @@ st.markdown("""
     }
     </style>
 """, unsafe_allow_html=True)
-
 
 # Load models
 try:
@@ -106,8 +121,8 @@ def display_gradcam(img_path, heatmap, cam_path="cam.jpg", alpha=0.4):
     superimposed_img = heatmap * alpha + img
     cv2.imwrite(cam_path, superimposed_img)
 
-    img = Image.open(cam_path)
-    st.image(img, caption='Grad-CAM Image', use_column_width=True)
+    return cam_path
+
 
 def predict_malaria(img_path):
     try:
@@ -126,33 +141,63 @@ def predict_malaria(img_path):
         st.error(f"Error during prediction: {e}")
         return None, None
     
-def display_confidence_score(prediction):
+def display_confidence_score(prediction, fig_height=4):
     confidence = prediction * 100 if prediction > 0.5 else (1 - prediction) * 100
     label = "Positive" if prediction > 0.5 else "Negative"
     
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=(5, fig_height))
     ax.barh([0], [confidence], color='red' if prediction > 0.5 else 'green')
     ax.set_xlim(0, 100)
     ax.set_yticks([])
     ax.set_xlabel('Confidence %')
     ax.set_title(f'Prediction: {label}')
     
-    st.pyplot(fig)
+    return fig
+
+def display_results_and_gradcam(prediction, img_path, heatmap):
+    confidence_fig = display_confidence_score(prediction, fig_height=4.5)
+    cam_path = display_gradcam(img_path, heatmap)
+    
+    # Create columns for grid layout
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.markdown("### Uploaded Image")
+        st.image(img_path, width=350)  # Using st.image to directly show the image
+        
+        st.pyplot(confidence_fig)
+    
+    with col2:
+        st.markdown("### Grad-CAM Image")
+        st.image(cam_path, width=350)  # Using st.image to directly show the image
 
 def generate_report(prediction, img_path, heatmap):
-    confidence = prediction * 100 if prediction > 0.5 else (1 - prediction) * 100
-    label = "Positive" if prediction > 0.5 else "Negative"
-    st.markdown("## Detailed Report")
-    st.markdown(f"**Prediction:** {label}")
-    st.markdown(f"**Confidence:** {confidence:.2f}%")
-    st.markdown("### Grad-CAM Image")
-    display_gradcam(img_path, heatmap)
-    st.markdown("**General Information about Malaria Detection:**")
+    st.markdown("# Detailed Report")
+    
+    # Determine the result based on prediction
+    result_label = "Positive" if prediction > 0.5 else "Negative"
+    confidence_percentage = prediction * 100 if prediction > 0.5 else (1 - prediction) * 100
+    
+    # Display the result and confidence with larger font sizes using HTML
+    st.markdown(f"""
+    <p style="font-size: 24px;"><strong>Result:</strong> The analysis indicates that the blood smear is <strong>{result_label}</strong>.</p>
+    <p style="font-size: 24px;"><strong>Confidence Level:</strong> {confidence_percentage:.2f}%</p>
+    """, unsafe_allow_html=True)
+    
+    # Display the uploaded image and Grad-CAM image
+    display_results_and_gradcam(prediction, img_path, heatmap)
+    
+    # Provide general information about malaria detection
+    st.markdown("## General Information About Malaria Detection")
     st.markdown("""
-    - Malaria is a life-threatening disease caused by parasites.
-    - It is transmitted to people through the bites of infected female Anopheles mosquitoes.
-    - Early diagnosis and treatment of malaria reduces disease and prevents deaths.
+    - **Malaria** is a serious and sometimes fatal disease caused by parasites that enter the human body through the bites of infected mosquitoes.
+    - **Transmission:** It is transmitted by the Anopheles mosquito, which is infected with the malaria parasites.
+    - **Symptoms:** Symptoms include fever, chills, and flu-like illness. If not treated promptly, malaria can lead to severe illness and death.
+    - **Prevention:** Using mosquito nets, insect repellents, and taking antimalarial medication can help prevent malaria.
+    - **Diagnosis and Treatment:** Malaria is diagnosed through blood tests, and treatment involves antimalarial medications prescribed by a healthcare provider.
+    - **Importance of Early Detection:** Early diagnosis and treatment are crucial to reduce the severity of the disease and prevent deaths.
     """)
+
 
 # Initialize session state for app_mode
 if 'app_mode' not in st.session_state:
@@ -178,72 +223,76 @@ if app_mode == 'Home':
     Use the navigation bar to access different sections of the app.
     """)
 
-    home_image_path = 'assets/home_page.jpeg'
+    home_image_path = 'assets/home_page.png'
     if os.path.exists(home_image_path):
-        st.image(home_image_path, use_column_width=True)
+        image = Image.open(home_image_path)
+        resized_image = image.resize((700, 300))  # Adjust these values as needed
+        st.image(resized_image, use_column_width=True)
     else:
-        st.warning("Home image not found. Please ensure 'home_image.jpeg' is in the working directory.")
+        st.warning("Home image not found. Please ensure 'home_page.png' is in the working directory.")
 
 elif app_mode == 'Detect Malaria':
     st.title('Malaria Disease Detection')
+    
+    # First Row: Upload an image
     st.write('Upload an image of a blood smear to check for malaria.')
+    uploaded_file = st.file_uploader("Choose an image...", type=["png", "jpg", "jpeg"])
 
-    col1, col2 = st.columns(2)
-
-    with col1:
-        uploaded_file = st.file_uploader("Choose an image...", type=["png", "jpg", "jpeg"])
+    if uploaded_file is not None:
+        file_details = {"filename": uploaded_file.name, "filetype": uploaded_file.type, "filesize": uploaded_file.size}
+        st.markdown("#### Uploaded Image Details")
+        st.write(file_details)
         
-    with col2:
-        if uploaded_file is not None:
-            file_details = {"filename": uploaded_file.name, "filetype": uploaded_file.type, "filesize": uploaded_file.size}
-            st.write(file_details)
-            img_folder = 'images/uploaded_images/'
-            st.markdown("---")
-            st.write("Processing the image...")
-            if not os.path.exists(img_folder):
-                os.makedirs(img_folder)
-            
-            img_path = os.path.join(img_folder, uploaded_file.name)
-            with open(img_path, 'wb') as f:
-                f.write(uploaded_file.getbuffer())
-            
-            img_array_resnet = get_img_array(img_path, size=(224, 224))
-            last_conv_layer_name = "conv5_block3_out"
+        # Save uploaded file
+        img_path = os.path.join("uploads", uploaded_file.name)
+        if not os.path.exists("uploads"):
+            os.makedirs("uploads")
+        with open(img_path, "wb") as f:
+            f.write(uploaded_file.getbuffer())
 
-            with st.spinner('Classifying the image, please wait...'):
-                prediction, img_array = predict_malaria(img_path)
+        img_array_resnet = get_img_array(img_path, size=(224, 224))
+        last_conv_layer_name = "conv5_block3_out"  # Adjust this to the correct layer name for ResNet50
 
-                if prediction is not None:
-                    st.image(image.array_to_img(img_array[0]), caption='Uploaded Image', use_column_width=True)
-                    display_confidence_score(prediction)
-                    heatmap = make_gradcam_heatmap(img_array_resnet, resnet_model, last_conv_layer_name)
-                    generate_report(prediction, img_path, heatmap)
+        with st.spinner('Classifying the image, please wait...'):
+            prediction, img_array = predict_malaria(img_path)
 
-                    feedback = st.radio("Is this prediction correct?", ("Yes", "No"))
-                    if st.button("Submit Feedback"):
-                        feedback_bool = True if feedback == "Yes" else False
-                        feedback_entry = Feedback(image_path=img_path, feedback=feedback_bool, prediction=float(prediction))
-                        session.add(feedback_entry)
-                        session.commit()
+            if prediction is not None:
+                # Generate Grad-CAM heatmap
+                heatmap = make_gradcam_heatmap(img_array_resnet, resnet_model, last_conv_layer_name)
+                # Display results and Grad-CAM image in a grid layout
+                generate_report(prediction, img_path, heatmap)
 
-                        # Display success message with an icon
-                        st.success("Thank you for your feedback! 🎉")
-                        st.balloons()  # Fun visual effect
-
+                # Collect and handle feedback
+                feedback = st.radio("Is this prediction correct?", ("Yes", "No"))
+                if st.button("Submit Feedback"):
+                    feedback_bool = True if feedback == "Yes" else False
+                    feedback_entry = Feedback(image_path=img_path, feedback=feedback_bool, prediction=float(prediction))
+                    session.add(feedback_entry)
+                    session.commit()
+                    st.success("Thank you for your feedback! 🎉")
+                    st.balloons()
 
 elif app_mode == 'About Malaria':
-    st.title("About Malaria")
+    st.title('About Malaria')
     st.markdown("""
-    Malaria is a serious and sometimes fatal disease caused by a parasite that commonly infects a certain type of mosquito which feeds on humans. 
-    People who get malaria are typically very sick with high fevers, shaking chills, and flu-like illness.
-    **Symptoms of Malaria:**
-    - Fever
-    - Chills
-    - Headache
-    - Nausea and vomiting
-    - Muscle pain and fatigue
-    **Prevention and Treatment:**
-    - Avoid mosquito bites by using mosquito repellent, sleeping under a bed net, and wearing protective clothing.
-    - Antimalarial drugs can prevent infection.
-    - Malaria can be cured with prescription drugs if treated early.
+    Malaria is a serious and sometimes fatal disease caused by parasites that enter the human body through the bites of infected mosquitoes. 
+    Symptoms include fever, chills, and flu-like illness. If not treated promptly, malaria can lead to severe illness and death.
+
+    **Prevention Measures:**
+    - Use mosquito nets and insect repellent.
+    - Take antimalarial medication if recommended.
+    - Ensure proper sanitation and drainage to prevent mosquito breeding.
+
+    **Diagnosis and Treatment:**
+    - Diagnosis is done through blood tests.
+    - Treatment involves antimalarial medications prescribed by a healthcare provider.
     """)
+
+# Streamlit footer
+st.markdown("""
+    <style>
+    footer {
+        visibility: hidden;
+    }
+    </style>
+    """, unsafe_allow_html=True)
