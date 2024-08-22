@@ -249,6 +249,11 @@ if app_mode == 'Home':
     else:
         st.warning("Home image not found. Please ensure 'home_page.png' is in the working directory.")
 
+    # Add "Detect Malaria" button on the Home page
+    if st.button('Detect Malaria'):
+        st.session_state.app_mode = 'Detect Malaria'
+        
+
 elif app_mode == 'Detect Malaria':
     st.title('Malaria Disease Detection')
     
@@ -323,5 +328,3 @@ st.markdown("""
     }
     </style>
     """, unsafe_allow_html=True)
-
-
