@@ -223,7 +223,7 @@ if app_mode == 'Home':
     Use the navigation bar to access different sections of the app.
     """)
 
-    home_image_path = 'assets/home_page.png'
+    home_image_path = 'assets/home_page.jpg'
     if os.path.exists(home_image_path):
         image = Image.open(home_image_path)
         resized_image = image.resize((700, 300))  # Adjust these values as needed
@@ -287,6 +287,13 @@ elif app_mode == 'About Malaria':
     - Diagnosis is done through blood tests.
     - Treatment involves antimalarial medications prescribed by a healthcare provider.
     """)
+    About_image_path = 'assets/prevent.jpeg'
+    if os.path.exists(About_image_path):
+        image = Image.open(About_image_path)
+        resized_image = image.resize((700, 300))  # Adjust these values as needed
+        st.image(resized_image, use_column_width=True)
+    else:
+        st.warning("About image not found. Please ensure 'home_page.png' is in the working directory.")
 
 # Streamlit footer
 st.markdown("""
