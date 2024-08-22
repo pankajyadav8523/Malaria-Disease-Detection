@@ -26,6 +26,10 @@ st.set_page_config(
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
 
+
+import webbrowser
+
+
 # Set the background image
 background_image = """
 <style>
@@ -198,6 +202,18 @@ def generate_report(prediction, img_path, heatmap):
     - **Importance of Early Detection:** Early diagnosis and treatment are crucial to reduce the severity of the disease and prevent deaths.
     """)
 
+# Define the function to handle the contact button click
+def contact():
+    st.markdown("""
+        <h3>Contact Us</h3>
+        <p>If you have any questions, suggestions, or need support, please reach out to us:</p>
+        <ul>
+            <li><strong>Email:</strong> <a href="mailto:contact@malariadetection.com">contact@malariadetection.com</a></li>
+            <li><strong>Phone:</strong> +1 123 456 7890</li>
+            <li><strong>Address:</strong> 123 Health St, Malaria City, Country</li>
+        </ul>
+    """, unsafe_allow_html=True)
+
 
 # Initialize session state for app_mode
 if 'app_mode' not in st.session_state:
@@ -211,6 +227,8 @@ if st.sidebar.button('→ Detect Malaria'):
     st.session_state.app_mode = 'Detect Malaria'
 if st.sidebar.button('→ About Malaria'):
     st.session_state.app_mode = 'About Malaria'
+if st.sidebar.button('→ Contact'):
+    st.session_state.app_mode = 'Contact'
 
 # Set app_mode based on session state
 app_mode = st.session_state.app_mode
@@ -287,7 +305,7 @@ elif app_mode == 'About Malaria':
     - Diagnosis is done through blood tests.
     - Treatment involves antimalarial medications prescribed by a healthcare provider.
     """)
-    About_image_path = 'assets/prevent.jpeg'
+    About_image_path = 'assets/malaria_preventions.jpg'
     if os.path.exists(About_image_path):
         image = Image.open(About_image_path)
         resized_image = image.resize((700, 300))  # Adjust these values as needed
@@ -295,6 +313,8 @@ elif app_mode == 'About Malaria':
     else:
         st.warning("About image not found. Please ensure 'home_page.png' is in the working directory.")
 
+elif app_mode == 'Contact':
+    contact()
 # Streamlit footer
 st.markdown("""
     <style>
@@ -303,3 +323,5 @@ st.markdown("""
     }
     </style>
     """, unsafe_allow_html=True)
+
+
