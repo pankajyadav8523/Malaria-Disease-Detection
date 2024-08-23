@@ -262,11 +262,6 @@ elif app_mode == 'Detect Malaria':
     uploaded_file = st.file_uploader("Choose an image...", type=["png", "jpg", "jpeg"])
 
     if uploaded_file is not None:
-        file_details = {"filename": uploaded_file.name, "filetype": uploaded_file.type, "filesize": uploaded_file.size}
-        st.markdown("#### Uploaded Image Details")
-        st.write(file_details)
-        
-        # Save uploaded file
         img_path = os.path.join("uploads", uploaded_file.name)
         if not os.path.exists("uploads"):
             os.makedirs("uploads")
