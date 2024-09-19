@@ -42,6 +42,41 @@ body {
 }
 </style>
 """
+# Custom CSS for button styling (applies to both sidebar and main body)
+st.markdown("""
+    <style>
+    /* Button styling for all buttons, including sidebar */
+    .stButton>button {
+        width: 100%;
+        height: 50px; /* Adjust height as needed */
+        font-size: 16px; /* Adjust font size as needed */
+        background-color: #007BFF; /* Button background color */
+        color: white; /* Button text color */
+        border-radius: 12px; /* Rounded corners */
+        padding: 10px;
+    }
+
+    /* Additional button styling for sidebar-specific buttons */
+    .sidebar .stButton>button {
+        background-color: #4CAF50; /* Different color for sidebar buttons */
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+# Custom CSS for button and hover styling
+st.markdown("""
+    <style>
+    .stButton>button {
+        background-color: white; /* Normal button background color */
+        color: white; /* Text color */
+        border-radius: 12px; /* Rounded corners */
+    }
+    .stButton>button:hover {
+        background-color: #45a049; /* Hover background color */
+        color: blue; /* Text color on hover */
+    }
+    </style>
+""", unsafe_allow_html=True)
 
 # Embed the CSS in the Streamlit app
 st.markdown(background_image, unsafe_allow_html=True)
